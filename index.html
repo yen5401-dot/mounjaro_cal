@@ -1,0 +1,151 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mounjaro 劑量 → 格數（互動版）</title>
+  <meta name="description" content="輸入目標劑量（mg），即時計算 2.5/5/7.5/10/12.5/15 mg 筆針需要的格數；每支筆固定 60 格；小數取至第 3 位。">
+  <style>
+    :root{
+      --bg:#0f172a; --card:#0b1020; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937; --focus:#38bdf8;
+      --brand:#7c3aed;
+      --c1:#555a61; --c2:#3b2a58; --c3:#136e6d; --c4:#b01974; --c5:#2d66a6; --c6:#e4584f;
+      --warn:#ef4444; --ok:#10b981;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--text);
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at 20% -10%, #1e293b 0%, transparent 60%),
+        radial-gradient(1000px 600px at 120% 0%, #0b3b47 0%, transparent 50%),
+        var(--bg);
+    }
+    .wrap{max-width:980px;margin:0 auto;padding:28px 16px}
+    header{margin-bottom:14px}
+    h1{margin:0 0 6px;font-size:clamp(22px,3.6vw,32px);color:var(--brand);font-weight:900}
+    .sub{color:var(--muted);font-size:13px}
+    .card{border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:14px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0))}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    input[type="number"]{
+      width:180px; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+      background:var(--card); color:var(--text); font-size:16px; outline:none;
+    }
+    input[type="number"]:focus{border-color:var(--focus); box-shadow:0 0 0 3px rgba(56,189,248,.15)}
+    .btn{padding:12px 16px;border-radius:10px;border:0;cursor:pointer;font-weight:800;background:linear-gradient(90deg,#10b981,#22d3ee);color:#052e2b}
+    .hint{color:var(--muted);font-size:12px}
+    .grid{display:grid;gap:12px;grid-template-columns:1fr}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+    th,td{border:1px solid var(--border);padding:10px;text-align:center}
+    th{background:#0b162a;color:#cbd5e1}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:700}
+    .ok{background:rgba(16,185,129,.15);color:#b7f7db;border:1px solid rgba(16,185,129,.35)}
+    .warn{background:rgba(239,68,68,.15);color:#fecaca;border:1px solid rgba(239,68,68,.35)}
+    .col-1{background:var(--c1);color:#fff}
+    .col-2{background:var(--c2);color:#fff}
+    .col-3{background:var(--c3);color:#fff}
+    .col-4{background:var(--c4);color:#fff}
+    .col-5{background:var(--c5);color:#fff}
+    .col-6{background:var(--c6);color:#fff}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Mounjaro 劑量 → 格數（互動版）</h1>
+      <div class="sub">每支筆固定 <b>60 格</b>。輸入目標劑量（mg），即時計算各筆型所需格數（小數至第 3 位）。超過 60 格會標示警示。</div>
+    </header>
+
+    <!-- 輸入 -->
+    <div class="card">
+      <div class="row">
+        <label for="dose" class="hint">目標劑量（mg）</label>
+        <input id="dose" type="number" inputmode="decimal" step="0.001" min="0" placeholder="例如 7.5" />
+        <button class="btn" id="calc">計算</button>
+      </div>
+      <div class="hint" style="margin-top:8px">公式：<span class="mono">所需格數 = 劑量 × (60 ÷ 筆針總劑量)</span></div>
+    </div>
+
+    <!-- 結果 -->
+    <div class="card">
+      <div class="grid" id="cards"></div>
+      <div class="hint" style="margin-top:8px">每格 mg = <span class="mono">筆針總劑量 ÷ 60</span>；每 1 mg 的格數 = <span class="mono">60 ÷ 筆針總劑量</span>。</div>
+    </div>
+
+    <!-- 參考表（每格與 1mg 格數） -->
+    <div class="card">
+      <table aria-label="各筆型每格 mg 與每 1mg 格數">
+        <thead>
+          <tr>
+            <th>筆針</th>
+            <th>每格 (mg)</th>
+            <th>1 mg 需要格數</th>
+          </tr>
+        </thead>
+        <tbody id="ref"></tbody>
+      </table>
+    </div>
+
+    <div class="hint" style="margin-top:10px;text-align:center">＊此工具僅供教育用途；實際用藥請依專業醫囑。</div>
+  </div>
+
+  <script>
+    const TOTAL_TICKS = 60;
+    const PENS = [2.5, 5, 7.5, 10, 12.5, 15];
+
+    const doseInput = document.getElementById('dose');
+    const calcBtn = document.getElementById('calc');
+    const cards = document.getElementById('cards');
+    const refTbody = document.getElementById('ref');
+
+    // 參考表：每格 mg 與每 1mg 格數
+    function renderRef(){
+      refTbody.innerHTML = PENS.map(p=>{
+        const perTick = (p / TOTAL_TICKS).toFixed(3);
+        const perMg   = (TOTAL_TICKS / p).toFixed(3);
+        return `<tr>
+          <td>${p} mg 筆</td>
+          <td class="mono">${perTick} mg</td>
+          <td class="mono">${perMg} 格</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function calc(){
+      const v = parseFloat(doseInput.value);
+      cards.innerHTML = '';
+      if (isNaN(v) || v < 0){
+        cards.innerHTML = `<div class="hint">請輸入非負的 mg 數值。</div>`;
+        return;
+      }
+      const cols = ['col-1','col-2','col-3','col-4','col-5','col-6'];
+      cards.innerHTML = PENS.map((p, i)=>{
+        const ticks = (v * (TOTAL_TICKS / p));
+        const ticksStr = ticks.toFixed(3);
+        const over = ticks > TOTAL_TICKS + 1e-9;
+        const perTick = (p / TOTAL_TICKS).toFixed(3);
+        const perMg   = (TOTAL_TICKS / p).toFixed(3);
+        return `
+          <div class="${cols[i]}" style="border-radius:12px;padding:14px">
+            <div style="font-weight:900;font-size:18px;margin-bottom:4px">${p} mg 筆</div>
+            <div class="mono" style="font-size:28px;font-weight:900">${ticksStr} 格</div>
+            <div style="margin-top:6px">
+              <span class="pill ${over ? 'warn':'ok'}">${over ? '超過 60 格' : '在 60 格以內'}</span>
+            </div>
+            <div class="hint" style="margin-top:8px">每格：${perTick} mg｜1 mg：${perMg} 格</div>
+          </div>`;
+      }).join('');
+    }
+
+    // 互動
+    calcBtn.addEventListener('click', calc);
+    doseInput.addEventListener('keydown', e=>{ if(e.key==='Enter') calc(); });
+
+    // 初始渲染
+    renderRef();
+    calc();
+  </script>
+</body>
+</html>
