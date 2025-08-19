@@ -3,18 +3,52 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mounjaro 格數 ↔ 劑量換算（含快速鍵）</title>
+<title>Mounjaro 格數 ↔ 劑量換算</title>
 <style>
-  body{font-family:Arial,"Microsoft JhengHei",sans-serif;background:#0f172a;color:#e5e7eb;margin:0;padding:20px}
-  h1{color:#a855f7;margin:0 0 10px}
-  .card{background:#111827;border-radius:12px;padding:16px;margin-top:12px;border:1px solid #1f2937}
+  :root{
+    --bg:#f9fafb; --text:#111827; --muted:#6b7280; --border:#e5e7eb;
+    --btn1:#10b981; --btn2:#22d3ee;
+
+    /* 卡片顏色（依你表格） */
+    --c25:#6b7280;   /* 2.5mg：灰 */
+    --c50:#3a2757;   /* 5.0mg：深紫 */
+    --c75:#1a7b76;   /* 7.5mg：綠藍 */
+    --c100:#b01773;  /* 10mg：桃紫 */
+    --c125:#2c66a6;  /* 12.5mg：藍 */
+    --c150:#e4574e;  /* 15mg：橘紅 */
+  }
+
+  body{font-family:Arial,"Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px}
+  h1{color:#0f766e;margin:0 0 10px}
+  h2{margin:0 0 8px;font-size:18px;color:#0891b2}
+  .card{background:#fff;border-radius:12px;padding:16px;margin-top:12px;border:1px solid var(--border);box-shadow:0 2px 6px rgba(0,0,0,.05)}
   .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  select,input{padding:10px;border-radius:8px;border:1px solid #374151;background:#1f2937;color:#fff}
-  button{padding:10px 14px;border-radius:8px;border:0;background:linear-gradient(90deg,#10b981,#22d3ee);color:#052e2b;font-weight:700;cursor:pointer}
-  .btn-ghost{background:#1f2937;color:#e5e7eb;border:1px dashed #374151}
+  select,input{padding:10px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:var(--text)}
+  button{padding:10px 14px;border-radius:6px;border:0;background:linear-gradient(90deg,var(--btn1),var(--btn2));color:#fff;font-weight:700;cursor:pointer}
+  .btn-ghost{background:#f3f4f6;color:var(--text);border:1px dashed #d1d5db}
+  .btn-ghost:hover{background:#e5e7eb}
   .quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .result{font-size:20px;font-weight:800;margin-top:10px}
-  .hint{color:#9ca3af;font-size:12px;margin-top:6px}
+  .result{font-size:20px;font-weight:800;margin-top:10px;color:var(--text)}
+  .hint{color:var(--muted);font-size:12px;margin-top:6px}
+
+  /* 結果卡片（六色） */
+  .grid{display:grid;gap:12px;margin-top:12px}
+  @media(min-width:820px){ .grid{grid-template-columns:repeat(3,1fr)} }
+  @media(min-width:1100px){ .grid{grid-template-columns:repeat(6,1fr)} }
+  .pill{
+    border-radius:12px; padding:14px; color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.1);
+    display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-height:110px;
+  }
+  .p25{background:var(--c25)}
+  .p50{background:var(--c50)}
+  .p75{background:var(--c75)}
+  .p100{background:var(--c100)}
+  .p125{background:var(--c125)}
+  .p150{background:var(--c150)}
+  .pill h3{margin:0;font-size:16px;font-weight:900}
+  .num{font-size:30px;font-weight:900;line-height:1}
+  .x{font-size:28px;font-weight:900;letter-spacing:1px}
+  .small{opacity:.9;font-size:12px}
 </style>
 </head>
 <body>
@@ -22,7 +56,7 @@
 
   <!-- 格數 -> 劑量 -->
   <div class="card">
-    <h2 style="margin:0 0 8px">1) 輸入格數 → 算劑量</h2>
+    <h2>1) 輸入格數 → 算劑量</h2>
     <div class="row">
       <label>格數：</label>
       <input id="ticks" type="number" min="0" step="1" placeholder="輸入格數" />
@@ -38,52 +72,40 @@
       <button id="btnDose">計算</button>
     </div>
     <div class="result" id="doseOut">—</div>
-    <div class="hint">劑量 = 格數 × (筆針總劑量 ÷ 60)。超過 60 格不可使用。</div>
+    <div class="hint">劑量 = 格數 × (筆針總劑量 ÷ 60)。若格數 > 60 不可使用。</div>
   </div>
 
-  <!-- 劑量 -> 格數 -->
+  <!-- 劑量 -> 格數（含 6 色卡片、顯示各筆型結果） -->
   <div class="card">
-    <h2 style="margin:0 0 8px">2) 輸入劑量 → 算格數</h2>
+    <h2>2) 輸入劑量 → 算格數（六種筆型）</h2>
     <div class="row">
       <label>劑量 (mg)：</label>
       <input id="mg" type="number" min="0" step="0.001" placeholder="例如 7.5" />
-      <label>筆型：</label>
-      <select id="pen2">
-        <option value="2.5">2.5 mg 筆</option>
-        <option value="5">5.0 mg 筆</option>
-        <option value="7.5">7.5 mg 筆</option>
-        <option value="10">10.0 mg 筆</option>
-        <option value="12.5">12.5 mg 筆</option>
-        <option value="15">15.0 mg 筆</option>
-      </select>
       <button id="btnTicks">計算</button>
-      <button id="btnSwap" class="btn-ghost" title="左右互換">左右互換</button>
+      <button id="btnSwap" class="btn-ghost">左右互換</button>
     </div>
 
     <!-- 快速劑量按鈕 -->
-    <div class="quick" id="quickRow">
-      <!-- 會由 JS 產生 2.5 / 5 / 7.5 / 10 / 12.5 / 15 mg 快速鍵 -->
-    </div>
+    <div class="quick" id="quickRow"></div>
 
-    <div class="result" id="tickOut">—</div>
-    <div class="result" id="halfOut">—</div>
-    <div class="hint">格數一律「無條件捨去」。若結果 > 60 格，僅顯示「超過 60 格，不可使用」。</div>
+    <!-- 彩色結果卡 -->
+    <div class="grid" id="grid"></div>
+
+    <div class="hint">格數一律「無條件捨去」。若某筆型結果 > 60 格，該卡片以 <b>X</b> 顯示（不顯示數字）。</div>
   </div>
 
 <script>
 const TOTAL_TICKS = 60;
-const QUICK_DOSES = [2.5, 5, 7.5, 10, 12.5, 15];
+const PENS = [2.5, 5, 7.5, 10, 12.5, 15];
+const COLOR_CLASS = ["p25","p50","p75","p100","p125","p150"];
 
-// 產生快速鍵
+// 快速劑量按鈕
 const quickRow = document.getElementById('quickRow');
-QUICK_DOSES.forEach(v=>{
+[2.5,5,7.5,10,12.5,15].forEach(v=>{
   const b = document.createElement('button');
   b.className = 'btn-ghost';
   b.textContent = v + ' mg';
-  b.addEventListener('click', ()=>{
-    document.getElementById('mg').value = v;
-    calcTicks(); // 一鍵帶入後自動計算
-  });
+  b.addEventListener('click', ()=>{ document.getElementById('mg').value = v; calcTicks(); });
   quickRow.appendChild(b);
 });
 
@@ -98,41 +120,44 @@ function calcDose(){
   out.textContent = `劑量 ≈ ${mg.toFixed(3)} mg`;
 }
 
-// 劑量 -> 格數（含 0.5 mg）
+// 劑量 -> 格數（輸出 6 張彩色卡）
 function calcTicks(){
   const mg = parseFloat(document.getElementById("mg").value);
-  const pen = parseFloat(document.getElementById("pen2").value);
-  const out = document.getElementById("tickOut");
-  const halfOut = document.getElementById("halfOut");
-  if(isNaN(mg) || mg < 0){ out.textContent="請輸入正確劑量"; halfOut.textContent=""; return; }
-
-  const rawTicks = mg * (TOTAL_TICKS / pen);
-  const ticks = Math.floor(rawTicks); // 無條件捨去
-  if(ticks > TOTAL_TICKS){
-    out.textContent = `${mg} mg 超過 60 格，不可使用`;
-    halfOut.textContent = "";
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  if(isNaN(mg) || mg < 0){
+    grid.innerHTML = `<div class="small" style="grid-column:1/-1">請輸入正確劑量</div>`;
     return;
   }
-  const halfTicks = Math.floor(0.5 * (TOTAL_TICKS / pen));
-  out.textContent = `${mg} mg 需要：${ticks} 格`;
-  halfOut.textContent = `0.5 mg 需要：${halfTicks} 格`;
+  PENS.forEach((pen, i)=>{
+    const raw = mg * (TOTAL_TICKS / pen);
+    const ticks = Math.floor(raw);
+    const over = ticks > TOTAL_TICKS;
+    const div = document.createElement('div');
+    div.className = `pill ${COLOR_CLASS[i]}`;
+    div.innerHTML = `
+      <h3>${pen} mg 筆</h3>
+      ${over ? `<div class="x">X</div>` : `<div class="num">${ticks} 格</div>`}
+      <div class="small">每格 = ${(pen/TOTAL_TICKS).toFixed(3)} mg</div>
+    `;
+    grid.appendChild(div);
+  });
 }
 
-// 左右互換：把兩區的輸入值/選擇對調
+// 左右互換：把上方「格數→劑量」的輸入與下方劑量互換
 function swapSides(){
-  // 將「劑量→格數」區的筆型與劑量，與「格數→劑量」區的筆型與格數互換輸入
   const pen1 = document.getElementById('pen1');
-  const pen2 = document.getElementById('pen2');
   const ticks = document.getElementById('ticks');
   const mg = document.getElementById('mg');
 
-  // 臨時儲存
+  // 以目前「劑量→格數」視圖的第一支筆（2.5mg）當換算參考，只做值互換方便使用
+  const pen2Val = 2.5; // 只是用來估算對調時的預填
   const tPen = pen1.value, tTicks = ticks.value;
-  pen1.value = pen2.value; pen2.value = tPen;
-  ticks.value = Math.floor(parseFloat(mg.value || "0") * (TOTAL_TICKS / parseFloat(pen2.value||"2.5"))) || "";
+
+  // 互換：把下方 mg 換到上方；把上方格數換成下方 mg 等值
+  ticks.value = Math.floor(parseFloat(mg.value || "0") * (TOTAL_TICKS / parseFloat(tPen || "2.5"))) || "";
   mg.value = (parseFloat(tTicks||"") * (parseFloat(tPen||"2.5") / TOTAL_TICKS) || "").toString();
 
-  // 重新計算
   calcDose();
   calcTicks();
 }
@@ -142,14 +167,12 @@ document.getElementById('btnDose').addEventListener('click', calcDose);
 document.getElementById('btnTicks').addEventListener('click', calcTicks);
 document.getElementById('btnSwap').addEventListener('click', swapSides);
 
-// Enter 快捷鍵
+// Enter 快捷
 document.getElementById('ticks').addEventListener('keydown', e=>{ if(e.key==='Enter') calcDose(); });
 document.getElementById('mg').addEventListener('keydown', e=>{ if(e.key==='Enter') calcTicks(); });
 
-// 初始顯示
-document.getElementById('doseOut').textContent = '—';
-document.getElementById('tickOut').textContent = '—';
-document.getElementById('halfOut').textContent = '—';
+// 初始渲染
+calcTicks();
 </script>
 </body>
 </html>
